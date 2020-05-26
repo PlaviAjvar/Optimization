@@ -15,7 +15,8 @@ from operator import add
 # Returns the parameter value s which minimizes the goal function in that direction
 # Also returns the value of the function and a runtime message
 
-def exact_line_search(goal_function, directional_vector, x_init, epsilon = 1e-20, max_iter = 10000, algorithm = "Newton"):
+
+def exact_line_search(goal_function, directional_vector, x_init, epsilon=1e-20, max_iter=10000, algorithm="Newton"):
     # constant for search bounds
     x_symm = decimal.Decimal(5)
     # define function in direction of the directional vector
@@ -51,7 +52,8 @@ def directional_derivative(gradient, directional_vector):
 # 5. Parameter alpha controls the relative upwards pitch of line compared to tangent (default value 0.4)
 # 6. Parameter beta controls the change of parameter s while iterating (default value 0.7)
 
-def basic_armijo(goal_function, directional_vector, x_init, gradient, alpha = decimal.Decimal(0.2), beta = decimal.Decimal(0.8), max_iter = 10000):
+
+def basic_armijo(goal_function, directional_vector, x_init, gradient, alpha=decimal.Decimal(0.2), beta=decimal.Decimal(0.8), max_iter=10000):
     # goal function restricted to given direction
     gamma = lambda s: goal_function(list(map(add, x_init, [s * x_i for x_i in directional_vector])))
 
@@ -139,7 +141,7 @@ def cubic(f_k, d_k, f_s, s, f_p, s_p):
     return (-b + D.sqrt()) / (3*a)
 
 
-def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = decimal.Decimal(0.2), max_iter = 10000):
+def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha=decimal.Decimal(0.2), max_iter=10000):
     # goal function restricted to given direction
     gamma = lambda s: goal_function(list(map(add, x_init, [s * x_i for x_i in directional_vector])))
 
@@ -170,7 +172,7 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
         # otherwise we need to improve parameter s
         # if the parameter has the initial value (s = 1) set it to the initial guess
         if (s - 1).copy_abs() < epsilon:
-            s_imp = d_k / (2*(f_k + d_k - f_s))
+            s_imp = d_k / (2*(f_k + d_k - f_s)).copy_abs()
 
         # otherwise it's not the first iteration, use cubic interpolation to improve s
         else:
@@ -190,8 +192,24 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
 
 # helper function which calls basic or cubic armijo depending on algorithm parameter
 
-def armijo_line_search(goal_function, directional_vector, x_init, gradient, algorithm = "Basic",
+def armijo_line_search(goal_function, directional_vector, x_init, gradient, algorithm="BasicArm",
                        alpha = decimal.Decimal(0.2), beta = decimal.Decimal(0.8), max_iter = 10000):
-    if algorithm == "Basic":
+    if algorithm == "BasicArm":
         return basic_armijo(goal_function, directional_vector, x_init, gradient, alpha, beta, max_iter)
     return cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha, max_iter)
+
+
+# master function which calls all other line search methods
+# used in gradient descent
+# algorithm can be any of the standard labels of the algorithms used in the other functions
+# 1. "BasicArm" for basic Armijo backtracking line search.
+# 2. "CubicArm" for cubic Armijo backtracking line search.
+# 3. "Newton" for Newton-Rhapson line search.
+# 4. "Bisection" for Bisection line search.
+# 5. "Quadint" for Quadratic interpolation line search.
+
+def line_search(goal_function, directional_vector, x_init, gradient, algorithm="BasicArm"):
+    if algorithm == "CubicArm" or algorithm == "BasicArm":
+        return armijo_line_search(goal_function, directional_vector, x_init, gradient, algorithm)
+    return exact_line_search(goal_function, directional_vector, x_init, decimal.Decimal(1e-20),
+                                                10000, algorithm)
