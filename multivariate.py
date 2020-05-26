@@ -27,7 +27,7 @@ def pun(x):
 # Testing
 ########################
 
-def test(algorithm):
+def test_exact(algorithm):
     if algorithm == "Newton":
         print("****************")
         print("Newton-Rhapson")
@@ -94,6 +94,9 @@ def test(algorithm):
     plt.title("hun(2 + 0.3s, 2 + 0.4s)")
     plt.show()
 
+def test_armijo():
+
+
 
 if __name__ == "__main__":
     # set precision of decimal to maximum
@@ -101,13 +104,13 @@ if __name__ == "__main__":
 
     # choose testing set
     print("Choose testing set:\n1. Exact line search Newton-Rhapson\n2. Exact line search Bisection\n"
-          + "3. Exact line search Quadratic interpolation\n")
+          + "3. Exact line search Quadratic interpolation\n4. Armijo line search")
     test_mode = int(input())
     print("")
 
     if test_mode == 1:
-        test("Newton")
+        test_exact("Newton")
     elif test_mode == 2:
-        test("Bisection")
+        test_exact("Bisection")
     elif test_mode == 3:
-        test("Quadint")
+        test_exact("Quadint")
