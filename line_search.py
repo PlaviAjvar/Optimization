@@ -63,25 +63,25 @@ def basic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
         s_0 /= 2
 
     # now we iterate to find s
-    s = 1
+    s = decimal.Decimal(1)
     epsilon = decimal.Decimal(1e-10)  # for numerical stability
 
     for iter in range(max_iter):
         f_s = gamma(s)
-        f_0 = gamma(0)
+        f_0 = gamma(decimal.Decimal(0))
         d_0 = directional_derivative(gradient, directional_vector)
 
         # if the uplifted tangent is above the function value
         if f_s <= f_0 + alpha * s * d_0 - epsilon:
             # we are in the permissible region
-            return (s, f_s, "Solution found in " + str(iter) + " iterations.")
+            return (s, f_s, "Solution found in " + str(iter + 1) + " iterations.")
         else:
             # the solution isn't in the permissible region, adjust s
             s *= beta
 
         # if we have dropped bellow s_0, which guarantees a drop in function value
         if s < s_0:
-            return (s_0, gamma(s_0), "Solution found in " + str(iter) + " iterations.")
+            return (s_0, gamma(s_0), "Solution found in " + str(iter + 1) + " iterations.")
 
 
     # If this is reached, the maximum number of iterations has been exceeded
@@ -91,7 +91,7 @@ def basic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
 
 # helper saturation function for cubic armijo algorithm
 
-def range(s_imp, s_low, s_high):
+def saturation(s_imp, s_low, s_high):
     # if it goes outside the limits, round it up or down
     if s_imp < s_low:
         return s_low
@@ -113,24 +113,33 @@ def range(s_imp, s_low, s_high):
 
 def cubic(f_k, d_k, f_s, s, f_p, s_p):
     # if s = s_p we dont have enough info
-    # this shouldnt occur but to make sure there are no zero divisions
+    # this shouldnt occur but to make sure there are no divisions by zero
     if s == s_p:
         return s / 2
 
+    # find determinant and right side of equations
     det = s**2 * s_p**2 * (s - s_p)
-    b_1 = s_p^2
+    b_1 = f_s - f_k - s*d_k
+    b_2 = f_p - f_k - s_p*d_k
 
-    a = (s_p**2 * f_s - s**2 * f_p + (f_k + s*d_k) * (s**2 - s_p**2)) / det
-    b = (s**3 * f_p - s_p**3 * f_s + (f_k + s*d_k) * (s_p**3 - s**3)) / det
+    # calculate coeficients of cubic
+    a = (s_p**2 * b_1 - s**2 * b_2) / det
+    b = (-s_p**3 * b_1 + s**3 * b_2) / det
     c = d_k
     d = f_k
 
+    # if a = 0 -> quadratic instead of cubic
+    epsilon = decimal.Decimal(1e-10)  # numeric stability
+    if a.copy_abs() < epsilon:
+        return -c / (2*b)
+
+    # otherwise it's proper cubic
+    # we have two solutions, we take the rightmost one
+    D = b*b - 3*a*c
+    return (-b + D.sqrt()) / (3*a)
 
 
-
-
-
-def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = decimal.Decimal(0.2), beta = decimal.Decimal(0.8), max_iter = 10000)
+def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = decimal.Decimal(0.2), max_iter = 10000):
     # goal function restricted to given direction
     gamma = lambda s: goal_function(list(map(add, x_init, [s * x_i for x_i in directional_vector])))
 
@@ -143,24 +152,24 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
 
     f_k = gamma(0)
     d_k = directional_derivative(gradient, directional_vector)
-    s = 1
-    s_p = 1  # s in previous iteration (makes no sense for first iteration)
-    epsilon = 1e-10  # numeric stability
+    s = decimal.Decimal(1)
+    s_p = decimal.Decimal(1)  # s in previous iteration (makes no sense for first iteration)
+    epsilon = decimal.Decimal(1e-10)  # numeric stability
 
     # iterativelly improve parameter s
     for iter in range(max_iter):
         # parameter has dropped bellow the minimum value, break iteration
         if s < s_0:
-            return (s_0, gamma(s_0), "Solution found in " + str(iter) + " iterations.")
+            return (s_0, gamma(s_0), "Solution found in " + str(iter + 1) + " iterations.")
 
         f_s = gamma(s)
         # if the function is bellow the uplifted tangent, we found an appropriate s
         if f_s <= f_k + s*alpha*d_k - epsilon:
-            return (s, f_s, "Solution found in " + str(iter) + " iterations.")
+            return (s, f_s, "Solution found in " + str(iter + 1) + " iterations.")
 
         # otherwise we need to improve parameter s
         # if the parameter has the initial value (s = 1) set it to the initial guess
-        if s == 1:
+        if (s - 1).copy_abs() < epsilon:
             s_imp = d_k / (2*(f_k + d_k - f_s))
 
         # otherwise it's not the first iteration, use cubic interpolation to improve s
@@ -173,7 +182,7 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
 
         # to ensure that s doesn't drop too much and that it doesn't increase too much
         # add saturation limits of [s / 10, s / 2] and round to the nearest limit if they are exceeded
-        s = range(s_imp, s / 10, s / 2)
+        s = saturation(s_imp, s / 10, s / 2)
 
     # if we make it here the maximum iteration count has been exceeded, still return s_0 and gamma(s_0)
     return (s_0, gamma(s_0), "Maximum number of iterations (" + str(max_iter) + ") exceeded.")
@@ -181,12 +190,8 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha = de
 
 # helper function which calls basic or cubic armijo depending on algorithm parameter
 
-def armijo_line_search(goal_function, directional_vector, x_init, gradient, alpha = decimal.Decimal(0.2), beta = decimal.Decimal(0.8),
-                       algorithm = "basic", max_iter = 10000):
-    if algorithm == "basic":
+def armijo_line_search(goal_function, directional_vector, x_init, gradient, algorithm = "Basic",
+                       alpha = decimal.Decimal(0.2), beta = decimal.Decimal(0.8), max_iter = 10000):
+    if algorithm == "Basic":
         return basic_armijo(goal_function, directional_vector, x_init, gradient, alpha, beta, max_iter)
-    return cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha, beta, max_iter)
-
-
-
-
+    return cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha, max_iter)
