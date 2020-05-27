@@ -211,5 +211,5 @@ def armijo_line_search(goal_function, directional_vector, x_init, gradient, algo
 def line_search(goal_function, directional_vector, x_init, gradient, algorithm="BasicArm"):
     if algorithm == "CubicArm" or algorithm == "BasicArm":
         return armijo_line_search(goal_function, directional_vector, x_init, gradient, algorithm)
-    return exact_line_search(goal_function, directional_vector, x_init, decimal.Decimal(1e-20),
+    return exact_line_search(goal_function, directional_vector, x_init, decimal.Decimal(1e-5),
                                                 10000, algorithm)

@@ -53,18 +53,19 @@ def hessian(f, x_cur, epsilon=decimal.Decimal(1e-10)):
 # Combined with line search to find even better candidate solutions
 
 def newton(goal_function, x_init, algorithm="BasicArm", epsilon=decimal.Decimal(1e-10), max_iter=10000):
-    x_cur = x_init
+    x = [x_init]
+    y = [goal_function(x_init)]
     n = len(x_init)
 
     for iter in range(max_iter):
         # find the hessian numerically
         # unfortunatelly, because numpy doesn't work with decimal
         # the type has to be changed to something like long double
-        H_temp = hessian(goal_function, x_cur)
+        H_temp = hessian(goal_function, x[iter])
         H = numpy.array(H_temp, dtype=numpy.float64)
 
         # calculate the gradient as well numerically, same applies
-        grad_temp = gradient(goal_function, x_cur)
+        grad_temp = gradient(goal_function, x[iter])
         grad = numpy.array([[entry] for entry in grad_temp], dtype=numpy.float64)
 
         # calculate change in x based on Newton-Rhapson step
@@ -76,15 +77,16 @@ def newton(goal_function, x_init, algorithm="BasicArm", epsilon=decimal.Decimal(
         q = decimal.Decimal(q_arr[0][0])
         # if q is possitive and small enough (2 is because we haven't halved the quadratic form) we have converged
         if q > 0 and q < 2*epsilon:
-            return (x_cur, goal_function(x_cur), "Solution found in (" + str(iter + 1) + ") iterations.")
+            return (x[iter], goal_function(x[iter]), "Solution found in (" + str(iter + 1) + ") iterations.", x, y)
 
         # now that we have the Newton-Rhapson diferential dx, we apply backtracking line search in that direction
         dx = [decimal.Decimal(dx[i][0]) for i in range(n)]
         grad = [decimal.Decimal(grad[i][0]) for i in range(n)]
-        (s, f_s, msg) = line_search.line_search(goal_function, dx, x_cur, grad, algorithm)
+        (s, f_s, msg) = line_search.line_search(goal_function, dx, x[iter], grad, algorithm)
 
         # compute next candidate x_k+1 = x_k + sdx
-        x_cur = [x_cur[i] + dx[i] * s for i in range(n)]
+        x.append([x[iter][i] + dx[i] * s for i in range(n)])
+        y.append(goal_function(x[-1]))
 
     # if we're here the maximum number of iterations has been exceeded
-    return (x_cur, goal_function(x_cur), "Maximum number of iterations (" + str(max_iter) + ") exceeded.")
+    return (x[-1], goal_function(x[-1]), "Maximum number of iterations (" + str(max_iter) + ") exceeded.", x, y)

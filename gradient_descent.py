@@ -35,23 +35,28 @@ def gradient(f, x_cur, epsilon=decimal.Decimal(1e-10)):
 # 4. Maximum number of iterations (optional)
 
 def gradient_descent(goal_function, x_init, algorithm="BasicArm", epsilon=decimal.Decimal(1e-10), max_iter=10000):
-    x_cur = x_init
+    x = [x_init]
+    f = [goal_function(x_init)]
+    n = len(x_init)
 
     for iter in range(max_iter):
         # calculate gradient and set dx = -grad(x_cur)
-        grad = gradient(goal_function, x_cur)
+        grad = gradient(goal_function, x[iter])
         dx = [-g_i for g_i in grad]
 
         # if the maximum norm among the dx components is bellow some epsilon, convergence is achieved
         if max([dx_i.copy_abs() for dx_i in dx]) < epsilon:
-            return (x_cur, goal_function(x_cur), "Solution found in (" + str(iter+1) + ") iterations.")
+            return (x[iter], goal_function(x[iter]), "Solution found in (" + str(iter+1) + ") iterations.", x, f)
 
         # solve line search potproblem in direction of -grad(x_cur)
         # use algorithm depending on algorithm parameter
-        (s, f_s, msg) = line_search.line_search(goal_function, dx, x_cur, grad, algorithm)
+        (s, f_s, msg) = line_search.line_search(goal_function, dx, x[iter], grad, algorithm)
 
         # update the current x-value based on the value of s we obtained
-        x_cur = [x_cur[i] + s * dx[i] for i in range(len(x_cur))]
+        x.append([x[iter][i] + s * dx[i] for i in range(n)])
+        f.append(goal_function(x[-1]))
+
+
 
     # If we're here we have exceeded the maximum number of iterations
-    return (x_cur, goal_function(x_cur), "Maximum number of iterations (" + str(max_iter) + ") exceeded.")
+    return (x[-1], goal_function(x[-1]), "Maximum number of iterations (" + str(max_iter) + ") exceeded.", x, f)
