@@ -172,7 +172,7 @@ def cubic_armijo(goal_function, directional_vector, x_init, gradient, alpha=deci
         # otherwise we need to improve parameter s
         # if the parameter has the initial value (s = 1) set it to the initial guess
         if (s - 1).copy_abs() < epsilon:
-            s_imp = d_k / (2*(f_k + d_k - f_s)).copy_abs()
+            s_imp = d_k.copy_abs() / (2*(f_k + d_k - f_s)).copy_abs()
 
         # otherwise it's not the first iteration, use cubic interpolation to improve s
         else:
